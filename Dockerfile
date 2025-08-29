@@ -20,7 +20,9 @@ RUN npm ci && npm cache clean --force
 
 # Copiar código fonte
 COPY src/ ./src/
-COPY server-docker.js ./
+
+# Compilar TypeScript
+RUN npm run build
 
 # Criar diretório para logs
 RUN mkdir -p /app/logs
@@ -43,4 +45,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/health/ping', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Comando para iniciar a aplicação
-CMD ["node", "server-docker.js"]
+CMD ["npm", "run", "start:prod"]
