@@ -217,7 +217,7 @@ app.get('/', (req, res) => {
                                  resultDiv.className = 'result ' + (result.success ? 'success' : 'error');
                  resultDiv.innerHTML = '<strong>' + result.message + '</strong><br>ID: ' + result.transactionId + 
                      '<br><br><a href="/admin" style="color: #1a73e8; text-decoration: none;">📊 Ver no Dashboard</a> | ' +
-                     '<a href="/api" style="color: #1a73e8; text-decoration: none;">🔗 Ver API Docs</a>';
+                     '<a href="/docs" style="color: #1a73e8; text-decoration: none;">🔗 Ver API Docs</a>';
             } catch (error) {
                 document.getElementById('result').className = 'result error';
                 document.getElementById('result').innerHTML = 'Erro ao processar pagamento';
@@ -286,7 +286,7 @@ app.get('/admin', (req, res) => {
         <h1>📊 Dashboard Administrativo</h1>
         <div style="margin-bottom: 20px;">
             <button class="refresh-btn" onclick="location.reload()">🔄 Atualizar</button>
-            <a href="/api" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-left: 10px; text-decoration: none;">🔗 API Docs</a>
+                         <a href="/docs" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-left: 10px; text-decoration: none;">🔗 API Docs</a>
             <a href="/webhooks" style="background: #6f42c1; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-left: 10px; text-decoration: none;">🔔 Webhooks</a>
         </div>
         
@@ -349,7 +349,7 @@ app.get('/admin', (req, res) => {
 });
 
 // Rota da API Docs
-app.get('/api', (req, res) => {
+app.get('/docs', (req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -381,7 +381,7 @@ app.get('/api', (req, res) => {
             <div class="navbar-nav">
                 <a href="/" class="nav-link">💳 Checkout</a>
                 <a href="/admin" class="nav-link">📊 Dashboard</a>
-                <a href="/api" class="nav-link">🔗 API</a>
+                <a href="/docs" class="nav-link">🔗 API</a>
                 <a href="/webhooks" class="nav-link">🔔 Webhooks</a>
             </div>
         </div>
@@ -403,19 +403,19 @@ app.get('/api', (req, res) => {
                 </div>
                 <p><strong>Descrição:</strong> Processar pagamento</p>
                 <p><strong>Parâmetros:</strong> name, email, cpf, phone, amount, paymentMethod</p>
-                                 <div class="code-block">
- curl -X POST /api/checkout \\
-   -H "Content-Type: application/json" \\
-   -d '{
-     "name": "João Silva",
-     "email": "joao@email.com",
-     "cpf": "123.456.789-00",
-     "phone": "(11) 99999-9999",
-     "amount": 10000,
-     "paymentMethod": "pix"
-   }'
-                 </div>
-                 <button onclick="testAPI('checkout')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar API</button>
+                <div class="code-block">
+curl -X POST /api/checkout \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "name": "João Silva",
+    "email": "joao@email.com",
+    "cpf": "123.456.789-00",
+    "phone": "(11) 99999-9999",
+    "amount": 10000,
+    "paymentMethod": "pix"
+  }'
+                </div>
+                <button onclick="testAPI('checkout')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar API</button>
             </div>
             
             <div class="endpoint">
@@ -424,10 +424,10 @@ app.get('/api', (req, res) => {
                     <span class="url">/api/transactions</span>
                 </div>
                 <p><strong>Descrição:</strong> Listar transações</p>
-                                 <div class="code-block">
- curl -X GET /api/transactions
-                 </div>
-                 <button onclick="testAPI('transactions')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar API</button>
+                <div class="code-block">
+curl -X GET /api/transactions
+                </div>
+                <button onclick="testAPI('transactions')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar API</button>
             </div>
             
             <div class="endpoint">
@@ -436,44 +436,44 @@ app.get('/api', (req, res) => {
                     <span class="url">/api/health</span>
                 </div>
                 <p><strong>Descrição:</strong> Status da API</p>
-                                 <div class="code-block">
- curl -X GET /api/health
-                 </div>
-                 <button onclick="testAPI('health')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar API</button>
-             </div>
-         </div>
-     </div>
+                <div class="code-block">
+curl -X GET /api/health
+                </div>
+                <button onclick="testAPI('health')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar API</button>
+            </div>
+        </div>
+    </div>
 
-     <script>
-         async function testAPI(endpoint) {
-             try {
-                 let response;
-                 if (endpoint === 'checkout') {
-                     response = await fetch('/api/checkout', {
-                         method: 'POST',
-                         headers: { 'Content-Type': 'application/json' },
-                         body: JSON.stringify({
-                             name: 'Teste API',
-                             email: 'teste@api.com',
-                             cpf: '123.456.789-00',
-                             phone: '(11) 99999-9999',
-                             amount: 5000,
-                             paymentMethod: 'pix'
-                         })
-                     });
-                 } else {
-                     response = await fetch(`/api/${endpoint}`);
-                 }
-                 
-                 const result = await response.json();
-                 alert(JSON.stringify(result, null, 2));
-             } catch (error) {
-                 alert('Erro ao testar API');
-             }
-         }
-     </script>
- </body>
- </html>
+    <script>
+        async function testAPI(endpoint) {
+            try {
+                let response;
+                if (endpoint === 'checkout') {
+                    response = await fetch('/api/checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: 'Teste API',
+                            email: 'teste@api.com',
+                            cpf: '123.456.789-00',
+                            phone: '(11) 99999-9999',
+                            amount: 5000,
+                            paymentMethod: 'pix'
+                        })
+                    });
+                } else {
+                    response = await fetch(\`/api/\${endpoint}\`);
+                }
+                
+                const result = await response.json();
+                alert(JSON.stringify(result, null, 2));
+            } catch (error) {
+                alert('Erro ao testar API');
+            }
+        }
+    </script>
+</body>
+</html>
   `);
 });
 
@@ -522,13 +522,13 @@ app.get('/webhooks', (req, res) => {
             <div style="margin-bottom: 20px;">
                 <a href="/" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-right: 10px; text-decoration: none;">💳 Testar Checkout</a>
                 <a href="/admin" style="background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-right: 10px; text-decoration: none;">📊 Dashboard</a>
-                <a href="/api" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none;">🔗 API Docs</a>
+                                 <a href="/docs" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none;">🔗 API Docs</a>
             </div>
             
             <div class="event-card">
                 <div class="event-title">charge.created</div>
                 <p>Disparado quando uma nova cobrança é criada</p>
-                                 <div class="code-block">
+                <div class="code-block">
  {
    "event": "charge.created",
    "data": {
@@ -537,14 +537,14 @@ app.get('/webhooks', (req, res) => {
      "status": "pending"
    }
  }
-                 </div>
-                 <button onclick="testWebhook('charge.created')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar Webhook</button>
+                </div>
+                <button onclick="testWebhook('charge.created')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar Webhook</button>
             </div>
             
             <div class="event-card">
                 <div class="event-title">charge.paid</div>
                 <p>Disparado quando uma cobrança é paga</p>
-                                 <div class="code-block">
+                <div class="code-block">
  {
    "event": "charge.paid",
    "data": {
@@ -554,14 +554,14 @@ app.get('/webhooks', (req, res) => {
      "paid_at": "2025-08-29T15:30:00Z"
    }
  }
-                 </div>
-                 <button onclick="testWebhook('charge.paid')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar Webhook</button>
+                </div>
+                <button onclick="testWebhook('charge.paid')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar Webhook</button>
             </div>
             
             <div class="event-card">
                 <div class="event-title">charge.failed</div>
                 <p>Disparado quando uma cobrança falha</p>
-                                 <div class="code-block">
+                <div class="code-block">
  {
    "event": "charge.failed",
    "data": {
@@ -571,33 +571,33 @@ app.get('/webhooks', (req, res) => {
      "error": "Insufficient funds"
    }
  }
-                 </div>
-                 <button onclick="testWebhook('charge.failed')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar Webhook</button>
-             </div>
-         </div>
-     </div>
+                </div>
+                <button onclick="testWebhook('charge.failed')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar Webhook</button>
+            </div>
+        </div>
+    </div>
 
-     <script>
-         async function testWebhook(event) {
-             try {
-                 const response = await fetch('/api/webhooks/test', {
-                     method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ 
-                         event: event, 
-                         transactionId: 'ch_' + Date.now() 
-                     })
-                 });
-                 
-                 const result = await response.json();
-                 alert(result.message);
-             } catch (error) {
-                 alert('Erro ao testar webhook');
-             }
-         }
-     </script>
- </body>
- </html>
+    <script>
+        async function testWebhook(event) {
+            try {
+                const response = await fetch('/api/webhooks/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        event: event, 
+                        transactionId: 'ch_' + Date.now() 
+                    })
+                });
+                
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                alert('Erro ao testar webhook');
+            }
+        }
+    </script>
+</body>
+</html>
   `);
 });
 
