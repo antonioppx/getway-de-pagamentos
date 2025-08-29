@@ -1,28 +1,12 @@
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middlewares básicos
-app.use(helmet({
-  contentSecurityPolicy: false
-}));
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100 // limite por IP
-});
-app.use(limiter);
-
-app.use(express.json({ limit: '10mb' }));
+// Middleware
+app.use(cors());
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Armazenamento em memória para demo
@@ -39,7 +23,7 @@ let transactions: any[] = [
     id: 'TXN_002', 
     customer: 'Maria Santos',
     amount: 8990,
-    paymentMethod: 'credit',
+    paymentMethod: 'cartão',
     status: 'approved',
     date: '2025-08-29T15:25:00Z'
   },
@@ -50,16 +34,17 @@ let transactions: any[] = [
     paymentMethod: 'boleto',
     status: 'pending',
     date: '2025-08-29T15:20:00Z'
-  },
-  {
-    id: 'TXN_004',
-    customer: 'Ana Oliveira',
-    amount: 7550,
-    paymentMethod: 'pix',
-    status: 'failed',
-    date: '2025-08-29T15:15:00Z'
   }
 ];
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    service: 'Gateway de Pagamentos API'
+  });
+});
 
 // API para buscar transações
 app.get('/api/transactions', (req, res) => {
@@ -90,37 +75,9 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    service: 'Gateway de Pagamentos API',
-    version: '1.0.0'
-  });
-});
-
-// Rotas de demonstração
-app.get('/api/demo', (req, res) => {
-  res.json({
-    message: 'Demo do Gateway de Pagamentos',
-    features: [
-      'Autenticação JWT',
-      'Gestão de Usuários',
-      'Cobranças PIX',
-      'Payouts',
-      'Webhooks',
-      'Dashboard Admin'
-    ],
-    status: 'Funcionando!',
-    timestamp: new Date().toISOString()
-  });
-});
-
 // Checkout endpoint
 app.post('/api/checkout', (req, res) => {
-  const { name, email, cpf, phone, paymentMethod, amount, cardNumber, cardName, cardExpiry, cardCvv, installments } = req.body;
+  const { name, email, cpf, phone, paymentMethod, amount } = req.body;
   
   // Gerar ID único
   const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -130,9 +87,9 @@ app.post('/api/checkout', (req, res) => {
   if (paymentMethod === 'boleto') {
     status = 'pending';
   } else if (paymentMethod === 'pix') {
-    status = Math.random() > 0.1 ? 'approved' : 'pending'; // 90% aprovado
+    status = Math.random() > 0.1 ? 'approved' : 'pending';
   } else if (paymentMethod === 'credit') {
-    status = Math.random() > 0.05 ? 'approved' : 'failed'; // 95% aprovado
+    status = Math.random() > 0.05 ? 'approved' : 'failed';
   }
   
   // Criar transação
@@ -149,356 +106,44 @@ app.post('/api/checkout', (req, res) => {
   };
   
   // Salvar transação
-  transactions.unshift(transaction); // Adicionar no início
-  
-  let response = {
-    success: true,
-    message: status === 'approved' ? 'Pagamento aprovado com sucesso!' : 
-             status === 'pending' ? 'Pagamento em processamento!' : 'Pagamento recusado!',
-    transactionId,
-    paymentMethod,
-    amount: parseInt(amount) || 100,
-    status: status,
-    timestamp: new Date().toISOString(),
-    customer: {
-      name,
-      email,
-      cpf,
-      phone
-    }
-  };
-
-  // Adicionar dados específicos do método
-  if (paymentMethod === 'pix') {
-    response.qrCode = true;
-    response.pixKey = 'demo@gateway.com';
-  } else if (paymentMethod === 'boleto') {
-    response.boletoUrl = 'https://demo.gateway.com/boleto/' + transactionId;
-    response.dueDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
-  } else if (paymentMethod === 'credit') {
-    response.installments = installments || 1;
-    response.cardLastDigits = cardNumber ? cardNumber.slice(-4) : '****';
-  }
-
-  res.json(response);
-});
-
-// Rota de teste de pagamento (mantida para compatibilidade)
-app.post('/api/demo/payment', (req, res) => {
-  const { amount, description } = req.body;
+  transactions.unshift(transaction);
   
   res.json({
     success: true,
-    message: 'Pagamento simulado com sucesso!',
-    data: {
-      id: `demo_${Date.now()}`,
-      amount: amount || 100,
-      description: description || 'Pagamento de teste',
-      status: 'approved',
-      timestamp: new Date().toISOString()
-    }
+    message: status === 'approved' ? 'Pagamento aprovado!' : 
+             status === 'pending' ? 'Pagamento em processamento!' : 'Pagamento recusado!',
+    transactionId,
+    status: status
   });
 });
 
-// Rota do Dashboard Admin (Dinâmico)
-app.get('/admin', (req, res) => {
-  // Calcular estatísticas
-  const total = transactions.length;
-  const approved = transactions.filter(t => t.status === 'approved').length;
-  const pending = transactions.filter(t => t.status === 'pending').length;
-  const failed = transactions.filter(t => t.status === 'failed').length;
-  const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
-  const successRate = total > 0 ? Math.round((approved / total) * 100) : 0;
-  
-  // Pegar transações recentes (últimas 10)
-  const recentTransactions = transactions.slice(0, 10);
-  
+// Rota principal - Checkout
+app.get('/', (req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Admin - Gateway de Pagamentos</title>
+    <title>Checkout - Gateway de Pagamentos</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f8f9fa;
-            color: #333;
-            line-height: 1.6;
-        }
-
-        .navbar {
-            background: #1a73e8;
-            color: white;
-            padding: 15px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .navbar-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .navbar-brand {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-
-        .navbar-nav {
-            display: flex;
-            gap: 20px;
-        }
-
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            transition: background 0.3s ease;
-        }
-
-        .nav-link:hover {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 30px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .header h1 {
-            color: #1a73e8;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            color: #5f6368;
-            font-size: 1.1rem;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .stat-icon {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1a73e8;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            color: #5f6368;
-            font-size: 1rem;
-        }
-
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 30px;
-        }
-
-        .main-content {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .sidebar {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            height: fit-content;
-        }
-
-        .section {
-            margin-bottom: 40px;
-        }
-
-        .section h2 {
-            color: #202124;
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 2px solid #e8eaed;
-            padding-bottom: 10px;
-        }
-
-        .transactions-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        .transactions-table th,
-        .transactions-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e8eaed;
-        }
-
-        .transactions-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #202124;
-        }
-
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .status-approved {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status-failed {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .quick-actions {
-            display: grid;
-            gap: 15px;
-        }
-
-        .action-card {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .action-card:hover {
-            background: #e3f2fd;
-            transform: translateY(-2px);
-        }
-
-        .action-icon {
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .action-title {
-            font-weight: 600;
-            color: #202124;
-            margin-bottom: 5px;
-        }
-
-        .action-description {
-            color: #5f6368;
-            font-size: 0.9rem;
-            margin-bottom: 15px;
-        }
-
-        .btn {
-            background: #1a73e8;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn:hover {
-            background: #1557b0;
-            transform: translateY(-1px);
-        }
-
-        .refresh-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
-        }
-
-        .refresh-btn:hover {
-            background: #218838;
-            transform: translateY(-1px);
-        }
-
-        @media (max-width: 768px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .navbar-nav {
-                flex-direction: column;
-                gap: 10px;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .navbar { background: #1a73e8; color: white; padding: 15px 0; }
+        .navbar-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar-brand { font-size: 1.5rem; font-weight: 600; }
+        .navbar-nav { display: flex; gap: 20px; }
+        .nav-link { color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; }
+        .nav-link:hover { background: rgba(255,255,255,0.1); }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .checkout-form { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 2px solid #e8eaed; border-radius: 8px; font-size: 16px; }
+        .btn { background: #1a73e8; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 8px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
@@ -508,130 +153,266 @@ app.get('/admin', (req, res) => {
             <div class="navbar-nav">
                 <a href="/" class="nav-link">💳 Checkout</a>
                 <a href="/admin" class="nav-link">📊 Dashboard</a>
-                <a href="/api" class="nav-link">🔗 API Docs</a>
-                <a href="/webhooks" class="nav-link">🔔 Webhooks</a>
+                <a href="/api" class="nav-link">🔗 API</a>
             </div>
         </div>
     </nav>
 
     <div class="container">
-        <div class="header">
-            <h1>📊 Dashboard Administrativo</h1>
-            <p>Controle total do seu gateway de pagamentos</p>
-            <button class="refresh-btn" onclick="refreshDashboard()">🔄 Atualizar Dados</button>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">💳</div>
-                <div class="stat-value" id="totalTransactions">${total}</div>
-                <div class="stat-label">Total de Transações</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">✅</div>
-                <div class="stat-value" id="approvedTransactions">${approved}</div>
-                <div class="stat-label">Aprovadas</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">⏳</div>
-                <div class="stat-value" id="pendingTransactions">${pending}</div>
-                <div class="stat-label">Pendentes</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">❌</div>
-                <div class="stat-value" id="failedTransactions">${failed}</div>
-                <div class="stat-label">Falharam</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">💰</div>
-                <div class="stat-value" id="totalAmount">R$ ${(totalAmount / 100).toFixed(2)}</div>
-                <div class="stat-label">Valor Total</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📈</div>
-                <div class="stat-value" id="successRate">${successRate}%</div>
-                <div class="stat-label">Taxa de Sucesso</div>
-            </div>
-        </div>
-
-        <div class="content-grid">
-            <div class="main-content">
-                <div class="section">
-                    <h2>🔄 Transações Recentes</h2>
-                    <table class="transactions-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Cliente</th>
-                                <th>Valor</th>
-                                <th>Método</th>
-                                <th>Status</th>
-                                <th>Data</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transactionsTable">
-                            ${recentTransactions.map(t => \`
-                                <tr>
-                                    <td>\${t.id}</td>
-                                    <td>\${t.customer}</td>
-                                    <td>R$ \${(t.amount / 100).toFixed(2)}</td>
-                                    <td>\${t.paymentMethod}</td>
-                                    <td><span class="status-badge status-\${t.status}">\${t.status === 'approved' ? 'Aprovado' : t.status === 'pending' ? 'Pendente' : 'Falhou'}</span></td>
-                                    <td>\${new Date(t.date).toLocaleString('pt-BR')}</td>
-                                </tr>
-                            \`).join('')}
-                        </tbody>
-                    </table>
+        <div class="checkout-form">
+            <h1>💳 Checkout Seguro</h1>
+            <form id="checkoutForm">
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" name="name" required>
                 </div>
-            </div>
-
-            <div class="sidebar">
-                <div class="section">
-                    <h2>⚡ Ações Rápidas</h2>
-                    <div class="quick-actions">
-                        <div class="action-card">
-                            <div class="action-icon">👤</div>
-                            <div class="action-title">Gestão de Usuários</div>
-                            <div class="action-description">Adicionar, editar e gerenciar usuários</div>
-                            <a href="#" class="btn">Gerenciar</a>
-                        </div>
-                        
-                        <div class="action-card">
-                            <div class="action-icon">🔔</div>
-                            <div class="action-title">Webhooks</div>
-                            <div class="action-description">Configurar notificações</div>
-                            <a href="/webhooks" class="btn">Configurar</a>
-                        </div>
-                        
-                        <div class="action-card">
-                            <div class="action-icon">📊</div>
-                            <div class="action-title">Relatórios</div>
-                            <div class="action-description">Gerar relatórios detalhados</div>
-                            <a href="#" class="btn">Gerar</a>
-                        </div>
-                        
-                        <div class="action-card">
-                            <div class="action-icon">⚙️</div>
-                            <div class="action-title">Configurações</div>
-                            <div class="action-description">Configurar gateway</div>
-                            <a href="#" class="btn">Configurar</a>
-                        </div>
-                    </div>
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" name="email" required>
                 </div>
-            </div>
+                <div class="form-group">
+                    <label>CPF</label>
+                    <input type="text" name="cpf" required>
+                </div>
+                <div class="form-group">
+                    <label>Telefone</label>
+                    <input type="tel" name="phone" required>
+                </div>
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" name="amount" value="100" required>
+                </div>
+                <div class="form-group">
+                    <label>Método de Pagamento</label>
+                    <select name="paymentMethod" required>
+                        <option value="pix">PIX</option>
+                        <option value="credit">Cartão de Crédito</option>
+                        <option value="boleto">Boleto</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Finalizar Compra</button>
+            </form>
+            <div id="result"></div>
         </div>
     </div>
 
     <script>
-        function refreshDashboard() {
-            location.reload();
-        }
-        
-        // Auto-refresh a cada 30 segundos
-        setInterval(() => {
-            refreshDashboard();
-        }, 30000);
+        document.getElementById('checkoutForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            try {
+                const response = await fetch('/api/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                const resultDiv = document.getElementById('result');
+                resultDiv.className = 'result ' + (result.success ? 'success' : 'error');
+                resultDiv.innerHTML = '<strong>' + result.message + '</strong><br>ID: ' + result.transactionId;
+            } catch (error) {
+                document.getElementById('result').className = 'result error';
+                document.getElementById('result').innerHTML = 'Erro ao processar pagamento';
+            }
+        });
     </script>
+</body>
+</html>
+  `);
+});
+
+// Rota do Dashboard
+app.get('/admin', (req, res) => {
+  const total = transactions.length;
+  const approved = transactions.filter(t => t.status === 'approved').length;
+  const pending = transactions.filter(t => t.status === 'pending').length;
+  const failed = transactions.filter(t => t.status === 'failed').length;
+  const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const successRate = total > 0 ? Math.round((approved / total) * 100) : 0;
+  
+  res.send(`
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Gateway de Pagamentos</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .navbar { background: #1a73e8; color: white; padding: 15px 0; }
+        .navbar-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar-brand { font-size: 1.5rem; font-weight: 600; }
+        .navbar-nav { display: flex; gap: 20px; }
+        .nav-link { color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; }
+        .nav-link:hover { background: rgba(255,255,255,0.1); }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: 700; color: #1a73e8; margin-bottom: 5px; }
+        .stat-label { color: #666; }
+        .transactions-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .transactions-table th, .transactions-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e8eaed; }
+        .transactions-table th { background: #f8f9fa; font-weight: 600; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 500; }
+        .status-approved { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-failed { background: #f8d7da; color: #721c24; }
+        .refresh-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">🏦 Gateway de Pagamentos</div>
+            <div class="navbar-nav">
+                <a href="/" class="nav-link">💳 Checkout</a>
+                <a href="/admin" class="nav-link">📊 Dashboard</a>
+                <a href="/api" class="nav-link">🔗 API</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>📊 Dashboard Administrativo</h1>
+        <button class="refresh-btn" onclick="location.reload()">🔄 Atualizar</button>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">${total}</div>
+                <div class="stat-label">Total de Transações</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${approved}</div>
+                <div class="stat-label">Aprovadas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${pending}</div>
+                <div class="stat-label">Pendentes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${failed}</div>
+                <div class="stat-label">Falharam</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">R$ ${(totalAmount / 100).toFixed(2)}</div>
+                <div class="stat-label">Valor Total</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${successRate}%</div>
+                <div class="stat-label">Taxa de Sucesso</div>
+            </div>
+        </div>
+
+        <h2>🔄 Transações Recentes</h2>
+        <table class="transactions-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Cliente</th>
+                    <th>Valor</th>
+                    <th>Método</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${transactions.map(t => \`
+                    <tr>
+                        <td>\${t.id}</td>
+                        <td>\${t.customer}</td>
+                        <td>R$ \${(t.amount / 100).toFixed(2)}</td>
+                        <td>\${t.paymentMethod}</td>
+                        <td><span class="status-badge status-\${t.status}">\${t.status === 'approved' ? 'Aprovado' : t.status === 'pending' ? 'Pendente' : 'Falhou'}</span></td>
+                        <td>\${new Date(t.date).toLocaleString('pt-BR')}</td>
+                    </tr>
+                \`).join('')}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+  `);
+});
+
+// Rota da API Docs
+app.get('/api', (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Docs - Gateway de Pagamentos</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .navbar { background: #1a73e8; color: white; padding: 15px 0; }
+        .navbar-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar-brand { font-size: 1.5rem; font-weight: 600; }
+        .navbar-nav { display: flex; gap: 20px; }
+        .nav-link { color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; }
+        .nav-link:hover { background: rgba(255,255,255,0.1); }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .api-docs { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .endpoint { background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #1a73e8; }
+        .method { background: #007bff; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+        .url { font-family: monospace; color: #1a73e8; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">🏦 Gateway de Pagamentos</div>
+            <div class="navbar-nav">
+                <a href="/" class="nav-link">💳 Checkout</a>
+                <a href="/admin" class="nav-link">📊 Dashboard</a>
+                <a href="/api" class="nav-link">🔗 API</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="api-docs">
+            <h1>🔗 Documentação da API</h1>
+            
+            <div class="endpoint">
+                <div style="margin-bottom: 15px;">
+                    <span class="method">POST</span>
+                    <span class="url">/api/checkout</span>
+                </div>
+                <p><strong>Descrição:</strong> Processar pagamento</p>
+                <p><strong>Parâmetros:</strong> name, email, cpf, phone, amount, paymentMethod</p>
+            </div>
+            
+            <div class="endpoint">
+                <div style="margin-bottom: 15px;">
+                    <span class="method">GET</span>
+                    <span class="url">/api/transactions</span>
+                </div>
+                <p><strong>Descrição:</strong> Listar transações</p>
+            </div>
+            
+            <div class="endpoint">
+                <div style="margin-bottom: 15px;">
+                    <span class="method">GET</span>
+                    <span class="url">/api/stats</span>
+                </div>
+                <p><strong>Descrição:</strong> Estatísticas do dashboard</p>
+            </div>
+            
+            <div class="endpoint">
+                <div style="margin-bottom: 15px;">
+                    <span class="method">GET</span>
+                    <span class="url">/api/health</span>
+                </div>
+                <p><strong>Descrição:</strong> Status da API</p>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
   `);
@@ -642,7 +423,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   console.error('Erro:', err);
   res.status(500).json({
     error: 'Erro interno do servidor',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Algo deu errado'
+    message: 'Algo deu errado'
   });
 });
 
@@ -656,9 +437,6 @@ app.use('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🎯 Demo: http://localhost:${PORT}/api/demo`);
-  console.log(`🛒 Checkout: http://localhost:${PORT}/`);
 });
 
 export default app;
