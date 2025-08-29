@@ -15,27 +15,14 @@ RUN apk add --no-cache \
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Instalar todas as dependências (incluindo dev para compilar TypeScript)
-RUN npm ci && npm cache clean --force
+# Instalar todas as dependências
+RUN npm ci
 
 # Copiar código fonte
-COPY src/ ./src/
+COPY . .
 
 # Compilar TypeScript
 RUN npm run build
-
-# Criar diretório para logs
-RUN mkdir -p /app/logs
-
-# Criar usuário não-root
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# Mudar propriedade dos arquivos
-RUN chown -R nodejs:nodejs /app
-
-# Mudar para usuário não-root
-USER nodejs
 
 # Expor porta
 EXPOSE 3000
