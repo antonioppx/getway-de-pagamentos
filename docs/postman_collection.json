@@ -1,0 +1,790 @@
+{
+  "info": {
+    "name": "Sistema de Pagamentos API",
+    "description": "Coleção completa para testar a API do sistema de pagamentos",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://localhost",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "charge_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "payout_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "webhook_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Health Check Básico",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            }
+          }
+        },
+        {
+          "name": "Health Check Detalhado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health/detailed",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health", "detailed"]
+            }
+          }
+        },
+        {
+          "name": "Ping",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health/ping",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health", "ping"]
+            }
+          }
+        },
+        {
+          "name": "Ready",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health/ready",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health", "ready"]
+            }
+          }
+        },
+        {
+          "name": "Live",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health/live",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health", "live"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Autenticação",
+      "item": [
+        {
+          "name": "Registrar Usuário",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.data.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.data.refresh_token);",
+                  "    pm.collectionVariables.set('user_id', response.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao@exemplo.com\",\n  \"password\": \"senha123\",\n  \"cpf\": \"12345678901\",\n  \"phone\": \"+5511999999999\",\n  \"role\": \"user\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.data.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.data.refresh_token);",
+                  "    pm.collectionVariables.set('user_id', response.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@pagamentos.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Renovar Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Verificar Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/verify",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        },
+        {
+          "name": "Esqueci Minha Senha",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"joao@exemplo.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "forgot-password"]
+            }
+          }
+        },
+        {
+          "name": "Resetar Senha",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"reset_token_aqui\",\n  \"new_password\": \"nova_senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "reset-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuários",
+      "item": [
+        {
+          "name": "Obter Perfil",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar Perfil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva Atualizado\",\n  \"phone\": \"+5511888888888\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Obter Saldo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/balance",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "balance"]
+            }
+          }
+        },
+        {
+          "name": "Listar Transações",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/transactions?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "transactions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Enviar KYC",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "document_type",
+                  "value": "cpf",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/kyc",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "kyc"]
+            }
+          }
+        },
+        {
+          "name": "Listar KYC",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/kyc",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "kyc"]
+            }
+          }
+        },
+        {
+          "name": "Obter Estatísticas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cobranças",
+      "item": [
+        {
+          "name": "Criar Cobrança",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('charge_id', response.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.00,\n  \"description\": \"Pagamento de teste\",\n  \"payment_method\": \"pix\",\n  \"expires_at\": \"2024-12-31T23:59:59Z\",\n  \"customer\": {\n    \"name\": \"Cliente Teste\",\n    \"email\": \"cliente@teste.com\",\n    \"document\": \"12345678901\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/charges",
+              "host": ["{{base_url}}"],
+              "path": ["api", "charges"]
+            }
+          }
+        },
+        {
+          "name": "Listar Cobranças",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/charges?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "charges"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obter Cobrança",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/charges/{{charge_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "charges", "{{charge_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Cancelar Cobrança",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/charges/{{charge_id}}/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["api", "charges", "{{charge_id}}", "cancel"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payouts",
+      "item": [
+        {
+          "name": "Criar Payout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('payout_id', response.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500.00,\n  \"bank_account\": {\n    \"bank_code\": \"001\",\n    \"agency\": \"1234\",\n    \"account\": \"12345678\",\n    \"account_type\": \"checking\"\n  },\n  \"description\": \"Saque para conta bancária\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payouts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payouts"]
+            }
+          }
+        },
+        {
+          "name": "Listar Payouts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/payouts?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payouts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obter Payout",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/payouts/{{payout_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payouts", "{{payout_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Criar Webhook",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('webhook_id', response.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://webhook.site/your-unique-url\",\n  \"events\": [\"charge.paid\", \"charge.expired\", \"payout.completed\"],\n  \"description\": \"Webhook para testes\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/webhooks",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhooks"]
+            }
+          }
+        },
+        {
+          "name": "Listar Webhooks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/webhooks",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhooks"]
+            }
+          }
+        },
+        {
+          "name": "Obter Webhook",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/{{webhook_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhooks", "{{webhook_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar Webhook",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://webhook.site/new-url\",\n  \"events\": [\"charge.paid\", \"payout.completed\"],\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/{{webhook_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhooks", "{{webhook_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Deletar Webhook",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/{{webhook_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhooks", "{{webhook_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Testar Webhook",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/{{webhook_id}}/test",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhooks", "{{webhook_id}}", "test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "Listar Usuários",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Atualizar KYC",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kyc_status\": \"approved\",\n  \"notes\": \"Documentos aprovados\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/kyc",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "{{user_id}}", "kyc"]
+            }
+          }
+        },
+        {
+          "name": "Configurar Taxas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_method\": \"pix\",\n  \"percentage_fee\": 2.99,\n  \"fixed_fee\": 0.30,\n  \"min_amount\": 0.01,\n  \"max_amount\": 10000.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/settings/fees",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "settings", "fees"]
+            }
+          }
+        },
+        {
+          "name": "Listar Taxas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/settings/fees",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "settings", "fees"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

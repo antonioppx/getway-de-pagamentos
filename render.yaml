@@ -1,0 +1,80 @@
+services:
+  - type: web
+    name: gateway-pagamentos-api
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: API_URL
+        value: https://gateway-pagamentos-api.onrender.com
+      - key: FRONTEND_URL
+        value: https://gateway-pagamentos-frontend.onrender.com
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: BCRYPT_ROUNDS
+        value: 12
+      - key: DEFAULT_CURRENCY
+        value: BRL
+      - key: MIN_CHARGE_AMOUNT
+        value: 0.01
+      - key: MAX_CHARGE_AMOUNT
+        value: 10000.00
+      - key: DEFAULT_FEE_PERCENTAGE
+        value: 2.99
+      - key: DEFAULT_FEE_FIXED
+        value: 0.30
+      - key: KYC_REQUIRED
+        value: true
+      - key: DEFAULT_DAILY_LIMIT
+        value: 10000.00
+      - key: DEFAULT_MONTHLY_LIMIT
+        value: 100000.00
+      - key: DEFAULT_TRANSACTION_LIMIT
+        value: 5000.00
+      - key: HEALTH_CHECK_ENABLED
+        value: true
+      - key: METRICS_ENABLED
+        value: true
+      - key: CACHE_TTL
+        value: 3600
+      - key: SESSION_TTL
+        value: 86400
+      - key: LOG_LEVEL
+        value: info
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      - key: MAX_FILE_SIZE
+        value: 5242880
+      - key: WEBHOOK_TIMEOUT
+        value: 10000
+    healthCheckPath: /api/health
+
+  - type: web
+    name: gateway-pagamentos-frontend
+    env: static
+    plan: starter
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://gateway-pagamentos-api.onrender.com
+
+databases:
+  - name: gateway-pagamentos-postgres
+    databaseName: pagamentos
+    user: pagamentos_user
+    plan: starter
+
+  - name: gateway-pagamentos-redis
+    plan: starter

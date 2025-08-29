@@ -1,0 +1,185 @@
+version: '3.8'
+
+services:
+  # Banco de dados PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: pagamentos_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-pagamentos}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/database/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - pagamentos_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-pagamentos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis para cache e sessões
+  redis:
+    image: redis:7-alpine
+    container_name: pagamentos_redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - pagamentos_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Backend da aplicação
+  backend:
+    build: .
+    container_name: pagamentos_backend
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-8000}
+      API_URL: ${API_URL:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
+      
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-pagamentos}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres123}
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres123}@postgres:5432/${DB_NAME:-pagamentos}
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis123}@redis:6379
+      
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-super-secret-refresh-key-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      
+      # Email
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@pagamentos.com}
+      
+      # Security
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-100}
+      
+      # Logs
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FILE_PATH: /app/logs
+      
+      # Upload
+      UPLOAD_PATH: ${UPLOAD_PATH:-/app/uploads}
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-5242880}
+      
+      # Webhook
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-your-webhook-secret-change-in-production}
+      WEBHOOK_TIMEOUT: ${WEBHOOK_TIMEOUT:-10000}
+      
+      # Payment
+      DEFAULT_CURRENCY: ${DEFAULT_CURRENCY:-BRL}
+      MIN_CHARGE_AMOUNT: ${MIN_CHARGE_AMOUNT:-0.01}
+      MAX_CHARGE_AMOUNT: ${MAX_CHARGE_AMOUNT:-100000}
+      DEFAULT_FEE_PERCENTAGE: ${DEFAULT_FEE_PERCENTAGE:-2.99}
+      DEFAULT_FEE_FIXED: ${DEFAULT_FEE_FIXED:-0.30}
+      
+      # KYC
+      KYC_REQUIRED: ${KYC_REQUIRED:-true}
+      KYC_DOCUMENT_TYPES: ${KYC_DOCUMENT_TYPES:-cpf,cnpj,rg,passport}
+      
+      # Limits
+      DEFAULT_DAILY_LIMIT: ${DEFAULT_DAILY_LIMIT:-10000}
+      DEFAULT_MONTHLY_LIMIT: ${DEFAULT_MONTHLY_LIMIT:-100000}
+      DEFAULT_TRANSACTION_LIMIT: ${DEFAULT_TRANSACTION_LIMIT:-5000}
+      
+      # Monitoring
+      HEALTH_CHECK_ENABLED: ${HEALTH_CHECK_ENABLED:-true}
+      METRICS_ENABLED: ${METRICS_ENABLED:-true}
+      
+      # Cache
+      CACHE_TTL: ${CACHE_TTL:-3600}
+      SESSION_TTL: ${SESSION_TTL:-86400}
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    ports:
+      - "3000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pagamentos_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx como proxy reverso
+  nginx:
+    image: nginx:alpine
+    container_name: pagamentos_nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    networks:
+      - pagamentos_network
+    restart: unless-stopped
+
+  # Frontend React (temporariamente desabilitado)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: pagamentos_frontend
+  #   environment:
+  #     REACT_APP_API_URL: ${API_URL:-http://localhost:3000}
+  #   ports:
+  #     - "3001:80"
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - pagamentos_network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  pagamentos_network:
+    driver: bridge
