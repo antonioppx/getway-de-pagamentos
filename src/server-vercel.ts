@@ -2,12 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middlewares básicos
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false // Permitir recursos externos para demo
+}));
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
   credentials: true
@@ -23,23 +26,22 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Servir arquivos estáticos
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Rota principal - servir a página HTML
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    service: 'Gateway de Pagamentos API'
-  });
-});
-
-// Rota principal
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Gateway de Pagamentos API',
-    version: '1.0.0',
-    status: 'online',
-    timestamp: new Date().toISOString()
+    service: 'Gateway de Pagamentos API',
+    version: '1.0.0'
   });
 });
 
@@ -55,7 +57,8 @@ app.get('/api/demo', (req, res) => {
       'Webhooks',
       'Dashboard Admin'
     ],
-    status: 'Funcionando!'
+    status: 'Funcionando!',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -97,6 +100,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🎯 Demo: http://localhost:${PORT}/api/demo`);
+  console.log(`🌐 Interface: http://localhost:${PORT}/`);
 });
 
 export default app;
