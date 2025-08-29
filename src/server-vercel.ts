@@ -12,18 +12,66 @@ let transactions: any[] = [
     amount: 15000,
     paymentMethod: 'pix',
     status: 'approved',
-    date: '2025-08-29T15:30:00Z'
+    date: '2025-08-29T15:30:00Z',
+    email: 'joao@email.com',
+    cpf: '123.456.789-00',
+    phone: '(11) 99999-9999'
+  }
+];
+
+// Webhooks simulados
+let webhooks: any[] = [
+  {
+    id: 'webhook_001',
+    url: 'https://meusite.com/webhook',
+    events: ['charge.created', 'charge.paid'],
+    status: 'active',
+    lastTriggered: '2025-08-29T15:30:00Z'
   }
 ];
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Gateway funcionando!' });
+  res.json({ 
+    status: 'OK', 
+    message: 'Gateway funcionando!',
+    stats: {
+      transactions: transactions.length,
+      webhooks: webhooks.length,
+      uptime: process.uptime()
+    }
+  });
 });
 
 // API para transações
 app.get('/api/transactions', (req, res) => {
   res.json({ success: true, data: transactions });
+});
+
+// API para webhooks
+app.get('/api/webhooks', (req, res) => {
+  res.json({ success: true, data: webhooks });
+});
+
+// Simular webhook
+app.post('/api/webhooks/test', (req, res) => {
+  const { event, transactionId } = req.body;
+  
+  // Simular envio de webhook
+  const webhookData = {
+    event: event,
+    data: {
+      id: transactionId,
+      timestamp: new Date().toISOString(),
+      status: event === 'charge.paid' ? 'paid' : event === 'charge.failed' ? 'failed' : 'pending'
+    }
+  };
+  
+  res.json({ 
+    success: true, 
+    message: `Webhook ${event} simulado com sucesso!`,
+    data: webhookData
+  });
 });
 
 // Checkout endpoint
@@ -55,12 +103,19 @@ app.post('/api/checkout', (req, res) => {
   
   transactions.unshift(transaction);
   
+  // Simular webhook para nova transação
+  if (webhooks.length > 0) {
+    console.log(`Webhook disparado: charge.created para ${transactionId}`);
+  }
+  
   res.json({
     success: true,
     message: status === 'approved' ? 'Pagamento aprovado!' : 
              status === 'pending' ? 'Pagamento em processamento!' : 'Pagamento recusado!',
     transactionId,
-    status: status
+    status: status,
+    dashboardUrl: '/admin',
+    apiUrl: '/api'
   });
 });
 
@@ -159,8 +214,10 @@ app.get('/', (req, res) => {
                 
                 const result = await response.json();
                 const resultDiv = document.getElementById('result');
-                resultDiv.className = 'result ' + (result.success ? 'success' : 'error');
-                resultDiv.innerHTML = '<strong>' + result.message + '</strong><br>ID: ' + result.transactionId;
+                                 resultDiv.className = 'result ' + (result.success ? 'success' : 'error');
+                 resultDiv.innerHTML = '<strong>' + result.message + '</strong><br>ID: ' + result.transactionId + 
+                     '<br><br><a href="/admin" style="color: #1a73e8; text-decoration: none;">📊 Ver no Dashboard</a> | ' +
+                     '<a href="/api" style="color: #1a73e8; text-decoration: none;">🔗 Ver API Docs</a>';
             } catch (error) {
                 document.getElementById('result').className = 'result error';
                 document.getElementById('result').innerHTML = 'Erro ao processar pagamento';
@@ -227,7 +284,11 @@ app.get('/admin', (req, res) => {
 
     <div class="container">
         <h1>📊 Dashboard Administrativo</h1>
-        <button class="refresh-btn" onclick="location.reload()">🔄 Atualizar</button>
+        <div style="margin-bottom: 20px;">
+            <button class="refresh-btn" onclick="location.reload()">🔄 Atualizar</button>
+            <a href="/api" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-left: 10px; text-decoration: none;">🔗 API Docs</a>
+            <a href="/webhooks" style="background: #6f42c1; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-left: 10px; text-decoration: none;">🔔 Webhooks</a>
+        </div>
         
         <div class="stats-grid">
             <div class="stat-card">
@@ -329,6 +390,11 @@ app.get('/api', (req, res) => {
     <div class="container">
         <div class="api-docs">
             <h1>🔗 Documentação da API</h1>
+            <div style="margin-bottom: 20px;">
+                <a href="/" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-right: 10px; text-decoration: none;">💳 Testar Checkout</a>
+                <a href="/admin" style="background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-right: 10px; text-decoration: none;">📊 Dashboard</a>
+                <a href="/webhooks" style="background: #6f42c1; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none;">🔔 Webhooks</a>
+            </div>
             
             <div class="endpoint">
                 <div style="margin-bottom: 15px;">
@@ -337,18 +403,19 @@ app.get('/api', (req, res) => {
                 </div>
                 <p><strong>Descrição:</strong> Processar pagamento</p>
                 <p><strong>Parâmetros:</strong> name, email, cpf, phone, amount, paymentMethod</p>
-                <div class="code-block">
-curl -X POST /api/checkout \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "name": "João Silva",
-    "email": "joao@email.com",
-    "cpf": "123.456.789-00",
-    "phone": "(11) 99999-9999",
-    "amount": 10000,
-    "paymentMethod": "pix"
-  }'
-                </div>
+                                 <div class="code-block">
+ curl -X POST /api/checkout \\
+   -H "Content-Type: application/json" \\
+   -d '{
+     "name": "João Silva",
+     "email": "joao@email.com",
+     "cpf": "123.456.789-00",
+     "phone": "(11) 99999-9999",
+     "amount": 10000,
+     "paymentMethod": "pix"
+   }'
+                 </div>
+                 <button onclick="testAPI('checkout')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar API</button>
             </div>
             
             <div class="endpoint">
@@ -357,9 +424,10 @@ curl -X POST /api/checkout \\
                     <span class="url">/api/transactions</span>
                 </div>
                 <p><strong>Descrição:</strong> Listar transações</p>
-                <div class="code-block">
-curl -X GET /api/transactions
-                </div>
+                                 <div class="code-block">
+ curl -X GET /api/transactions
+                 </div>
+                 <button onclick="testAPI('transactions')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar API</button>
             </div>
             
             <div class="endpoint">
@@ -368,14 +436,44 @@ curl -X GET /api/transactions
                     <span class="url">/api/health</span>
                 </div>
                 <p><strong>Descrição:</strong> Status da API</p>
-                <div class="code-block">
-curl -X GET /api/health
-                </div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+                                 <div class="code-block">
+ curl -X GET /api/health
+                 </div>
+                 <button onclick="testAPI('health')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar API</button>
+             </div>
+         </div>
+     </div>
+
+     <script>
+         async function testAPI(endpoint) {
+             try {
+                 let response;
+                 if (endpoint === 'checkout') {
+                     response = await fetch('/api/checkout', {
+                         method: 'POST',
+                         headers: { 'Content-Type': 'application/json' },
+                         body: JSON.stringify({
+                             name: 'Teste API',
+                             email: 'teste@api.com',
+                             cpf: '123.456.789-00',
+                             phone: '(11) 99999-9999',
+                             amount: 5000,
+                             paymentMethod: 'pix'
+                         })
+                     });
+                 } else {
+                     response = await fetch(`/api/${endpoint}`);
+                 }
+                 
+                 const result = await response.json();
+                 alert(JSON.stringify(result, null, 2));
+             } catch (error) {
+                 alert('Erro ao testar API');
+             }
+         }
+     </script>
+ </body>
+ </html>
   `);
 });
 
@@ -421,57 +519,85 @@ app.get('/webhooks', (req, res) => {
         <div class="webhook-content">
             <h1>🔔 Webhooks</h1>
             <p>Configure notificações em tempo real para eventos de pagamento</p>
+            <div style="margin-bottom: 20px;">
+                <a href="/" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-right: 10px; text-decoration: none;">💳 Testar Checkout</a>
+                <a href="/admin" style="background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-right: 10px; text-decoration: none;">📊 Dashboard</a>
+                <a href="/api" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none;">🔗 API Docs</a>
+            </div>
             
             <div class="event-card">
                 <div class="event-title">charge.created</div>
                 <p>Disparado quando uma nova cobrança é criada</p>
-                <div class="code-block">
-{
-  "event": "charge.created",
-  "data": {
-    "id": "ch_123456789",
-    "amount": 10000,
-    "status": "pending"
-  }
-}
-                </div>
+                                 <div class="code-block">
+ {
+   "event": "charge.created",
+   "data": {
+     "id": "ch_123456789",
+     "amount": 10000,
+     "status": "pending"
+   }
+ }
+                 </div>
+                 <button onclick="testWebhook('charge.created')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar Webhook</button>
             </div>
             
             <div class="event-card">
                 <div class="event-title">charge.paid</div>
                 <p>Disparado quando uma cobrança é paga</p>
-                <div class="code-block">
-{
-  "event": "charge.paid",
-  "data": {
-    "id": "ch_123456789",
-    "amount": 10000,
-    "status": "paid",
-    "paid_at": "2025-08-29T15:30:00Z"
-  }
-}
-                </div>
+                                 <div class="code-block">
+ {
+   "event": "charge.paid",
+   "data": {
+     "id": "ch_123456789",
+     "amount": 10000,
+     "status": "paid",
+     "paid_at": "2025-08-29T15:30:00Z"
+   }
+ }
+                 </div>
+                 <button onclick="testWebhook('charge.paid')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar Webhook</button>
             </div>
             
             <div class="event-card">
                 <div class="event-title">charge.failed</div>
                 <p>Disparado quando uma cobrança falha</p>
-                <div class="code-block">
-{
-  "event": "charge.failed",
-  "data": {
-    "id": "ch_123456789",
-    "amount": 10000,
-    "status": "failed",
-    "error": "Insufficient funds"
-  }
-}
-                </div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+                                 <div class="code-block">
+ {
+   "event": "charge.failed",
+   "data": {
+     "id": "ch_123456789",
+     "amount": 10000,
+     "status": "failed",
+     "error": "Insufficient funds"
+   }
+ }
+                 </div>
+                 <button onclick="testWebhook('charge.failed')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 10px;">🧪 Testar Webhook</button>
+             </div>
+         </div>
+     </div>
+
+     <script>
+         async function testWebhook(event) {
+             try {
+                 const response = await fetch('/api/webhooks/test', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ 
+                         event: event, 
+                         transactionId: 'ch_' + Date.now() 
+                     })
+                 });
+                 
+                 const result = await response.json();
+                 alert(result.message);
+             } catch (error) {
+                 alert('Erro ao testar webhook');
+             }
+         }
+     </script>
+ </body>
+ </html>
   `);
 });
 
