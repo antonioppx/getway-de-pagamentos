@@ -15,11 +15,10 @@
     "noImplicitReturns": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "exactOptionalPropertyTypes": false,
-    "suppressImplicitAnyIndexErrors": true
+    "exactOptionalPropertyTypes": false
   },
   "include": [
-    "src/**/*"
+    "src/server-vercel.ts"
   ],
   "exclude": [
     "node_modules",
